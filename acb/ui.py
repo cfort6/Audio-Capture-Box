@@ -154,6 +154,7 @@ class App:
 
         self.usb_root = None
         self.free = {"sd": 0, "usb": 0}
+        self.trash = {"sd": 0, "usb": 0}
         self.last_disk = 0
         self.disk_busy = False
         self.rec_bps = 0
@@ -383,17 +384,37 @@ class App:
         return storage.recordings_dir(storage.SD_ROOT)
 
     def refresh_disk(self, sync=False):
+        recording, rec_dest, rec_bps = self.engine.recording, self.rec_dest, self.rec_bps
+        reserve = self.S["reserve_gb"] * 1e9
+
         def work():
             usb = None if self.simulate else storage.find_usb_drive()
-            free_sd = storage.free_bytes(storage.recordings_dir(storage.SD_ROOT))
-            free_usb = storage.free_bytes(usb) if usb else 0
-            return usb, free_sd, free_usb
+            dirs = {"sd": storage.recordings_dir(storage.SD_ROOT)}
+            if usb:
+                dirs["usb"] = storage.recordings_dir(usb)
+            purged = 0
+            # While recording, clear the oldest takes out of the Trash if the drive
+            # gets within ~2 minutes of the safety buffer.
+            if recording and rec_dest in dirs:
+                d = dirs[rec_dest]
+                while storage.free_bytes(d) - reserve < rec_bps * 120:
+                    if not storage.purge_oldest(d):
+                        break
+                    purged += 1
+            free = {k: storage.free_bytes(v) for k, v in dirs.items()}
+            trash = {k: storage.trash_bytes(v) for k, v in dirs.items()}
+            return usb, free, trash, purged
 
         def done(res):
             self.disk_busy = False
             if isinstance(res, Exception):
                 return
-            self.usb_root, self.free["sd"], self.free["usb"] = res
+            usb, free, trash, purged = res
+            self.usb_root = usb
+            self.free = {"sd": free.get("sd", 0), "usb": free.get("usb", 0)}
+            self.trash = {"sd": trash.get("sd", 0), "usb": trash.get("usb", 0)}
+            if purged:
+                self.toast(f"Made room by clearing {purged} take{'s' if purged != 1 else ''} out of the Trash.")
 
         if sync:
             done(work())
@@ -450,10 +471,14 @@ class App:
     def time_left(self):
         d = self.dest()
         bps = self.rec_bps if self.engine.recording else self.bytes_per_sec()
-        avail = self.free[d] - self.S["reserve_gb"] * 1e9
+        avail = self.available(d) - self.S["reserve_gb"] * 1e9
         if bps <= 0:
             return float("inf")
         return max(0.0, avail / bps)
+
+    def available(self, d):
+        """Free space plus whatever is in the Trash (it gets cleared when needed)."""
+        return self.free[d] + self.trash[d]
 
     def toggle_arm(self, ids, val):
         a = dict(self.S["armed"])
@@ -925,10 +950,10 @@ class App:
         hw = (cw - 6) / 2
         d = self.dest()
         self.opt_button((lx, 216, hw, 46), "SD card", d == "sd", lambda: self.S.__setitem__("dest", "sd"),
-                        sub=f"{self.free['sd'] / 1e9:.1f} GB free")
+                        sub=f"{self.available('sd') / 1e9:.1f} GB free")
         usb_ok = self.usb_root is not None
         self.opt_button((lx + hw + 6, 216, hw, 46), "USB drive", d == "usb", lambda: self.S.__setitem__("dest", "usb"),
-                        sub=f"{self.free['usb'] / 1e9:.1f} GB free" if usb_ok else "Not connected", enabled=usb_ok)
+                        sub=f"{self.available('usb') / 1e9:.1f} GB free" if usb_ok else "Not connected", enabled=usb_ok)
         # right column
         self.label("Wi-Fi", (rx, 58))
         wr = pygame.Rect(rx, 76, cw, 46)
@@ -960,7 +985,11 @@ class App:
         self.text(f"Writing to: {self.dest_name()}", (card.x + 14, card.y + 10), 14, bold=True)
         self.text("Time remaining:", (card.x + 14, card.y + 38), 13, C["soft"], anchor="midleft")
         self.text(left_fmt(self.time_left()), (card.x + 14 + self.tw("Time remaining:", 13) + 8, card.y + 38), 18, bold=True, mono=True, anchor="midleft")
-        self.text(f"{self.free[self.dest()] / 1e9:.1f} GB free · {self.S['reserve_gb']:.1f} GB kept as a safety buffer",
+        tb = self.trash[self.dest()]
+        free_line = f"{self.available(self.dest()) / 1e9:.1f} GB free"
+        if tb > 0:
+            free_line += f" (incl. {tb / 1e9:.1f} GB in Trash)"
+        self.text(f"{free_line} · {self.S['reserve_gb']:.1f} GB buffer",
                   (card.x + 14, card.y + 56), 12, C["soft"], maxw=cw - 28)
         bps = self.bytes_per_sec()
         line = (f"Writing {bps / 1e6:.2f} MB/s for {self.armed_channels()} channels at {rate_label(self.S['rate'])} / {bit_label(self.S['bits'])}"

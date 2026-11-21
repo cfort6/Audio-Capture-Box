@@ -14,7 +14,7 @@ fi
 
 echo "==> Installing packages"
 sudo apt-get update
-sudo apt-get install -y python3-pygame python3-numpy python3-soundfile libportaudio2 libsndfile1 \
+sudo apt-get install -y python3-pygame python3-numpy python3-soundfile python3-evdev libportaudio2 libsndfile1 \
   fonts-dejavu-core udisks2 network-manager alsa-utils
 if ! sudo apt-get install -y python3-sounddevice; then
   echo "==> python3-sounddevice not in apt, installing with pip"
@@ -65,7 +65,9 @@ Conflicts=getty@tty1.service
 User=$USER_NAME
 SupplementaryGroups=audio video input render plugdev netdev
 WorkingDirectory=$APP_DIR
-Environment=SDL_VIDEODRIVER=kmsdrm
+Environment=ACB_DISPLAY=auto
+ExecStartPre=-+/bin/sh -c 'TERM=linux setterm --cursor off --blank 0 --powersave off > /dev/tty1 < /dev/tty1; printf "\\033[2J" > /dev/tty1'
+ExecStopPost=-+/bin/sh -c 'TERM=linux setterm --cursor on > /dev/tty1 < /dev/tty1'
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 -m acb
 Restart=on-failure

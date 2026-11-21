@@ -11,7 +11,7 @@ import time
 
 import pygame
 
-from . import devices, storage
+from . import devices, fbdisplay, storage
 from .engine import BYTES_PER_SAMPLE, Engine, Player
 from .settings import Settings
 from .share import PORT, Share
@@ -105,13 +105,29 @@ class App:
         self.wifi = wifi
         self.simulate = simulate
         self.ifaces_provider = ifaces_provider
-        pygame.display.init()
-        pygame.font.init()
-        flags = 0 if windowed else pygame.FULLSCREEN
-        self.surf = pygame.display.set_mode((W, H), flags)
-        pygame.display.set_caption("Audio Capture Box")
-        if not windowed:
-            pygame.mouse.set_visible(False)
+        self.fb = None
+        self.touch = None
+        mode = os.environ.get("ACB_DISPLAY", "auto")
+        if not windowed and mode in ("auto", "fb") and fbdisplay.available():
+            # Draw off-screen and copy each frame to /dev/fb0; read touch via evdev.
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+            pygame.display.init()
+            pygame.font.init()
+            self.surf = pygame.display.set_mode((W, H))
+            self.fb = fbdisplay.FrameBuffer()
+            print(f"Display: framebuffer {self.fb.w}x{self.fb.h} {self.fb.bpp}-bit")
+            self.touch = fbdisplay.TouchReader(W, H)
+            self.touch.start()
+        else:
+            if not windowed:
+                os.environ.setdefault("SDL_VIDEODRIVER", "kmsdrm")
+            pygame.display.init()
+            pygame.font.init()
+            flags = 0 if windowed else pygame.FULLSCREEN
+            self.surf = pygame.display.set_mode((W, H), flags)
+            pygame.display.set_caption("Audio Capture Box")
+            if not windowed:
+                pygame.mouse.set_visible(False)
         self.fonts = Fonts()
         self.tcache = {}
         self.clock = pygame.time.Clock()
@@ -525,7 +541,10 @@ class App:
                     self.handle(ev)
                 self.update(now)
                 self.draw(now)
-                pygame.display.flip()
+                if self.fb:
+                    self.fb.show(self.surf)
+                else:
+                    pygame.display.flip()
                 if screenshot_dir and now >= shot_t:
                     pygame.image.save(self.surf, os.path.join(screenshot_dir, f"{shot_i}_{self.screen}.png"))
                     shot_i += 1
@@ -545,6 +564,9 @@ class App:
             self.player.stop()
             self.share.stop()
             self.engine.close()
+            if self.fb:
+                self.fb.clear()
+                self.fb.close()
             pygame.quit()
 
     def update(self, now):

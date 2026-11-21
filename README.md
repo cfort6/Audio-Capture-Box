@@ -62,6 +62,38 @@ On the recorder, tap **Takes → Send to computer**, then either:
 
 (Use your Pi's hostname and username. The screen shows the exact address and command.)
 
+## Boot image instead of scrolling text
+
+```bash
+cd ~/Audio-Capture-Box
+./install-splash.sh
+sudo reboot
+```
+
+The Pi then shows `extras/splash.png` while it starts. To use your own picture, replace
+that file with an 800×480 PNG and run the script again.
+
+## Making more units (cloning the SD card)
+
+Set up one Pi completely (the "master"), then copy it onto blank SD cards with a USB
+card reader plugged into the master:
+
+```bash
+cd ~/Audio-Capture-Box
+./clone-to-card.sh
+```
+
+It asks which drive is the card reader, copies the whole system, then cleans up the
+copy so it's a fresh unit: no recordings, settings, saved GitHub login or shell history,
+and optionally no saved Wi-Fi. On its first boot each copy gives itself its own name
+(`recorder-XXXX`, from the Pi's serial number), SSH keys and network ID, so several
+units can share a network. The master isn't changed.
+
+For units you hand to other people, make the master with the username `user` and
+password `1234` in Raspberry Pi Imager; the Send to computer screen then shows that
+password. Anyone on the same Wi-Fi who knows it can log in to the Pi, so tell people
+to change it with `passwd` if they care.
+
 ## Useful commands
 
 ```bash

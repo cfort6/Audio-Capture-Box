@@ -11,7 +11,7 @@ import time
 
 import pygame
 
-from . import devices, fbdisplay, storage
+from . import __version__, devices, fbdisplay, storage
 from .engine import BYTES_PER_SAMPLE, Engine, Player
 from .settings import Settings
 from .share import PORT, Share
@@ -28,7 +28,7 @@ C = {
     "green": (61, 220, 132), "yellow": (255, 201, 60), "red": (255, 69, 69),
     "recbg": (42, 18, 21), "recb": (255, 77, 77), "rectext": (255, 138, 138), "recsolid": (198, 40, 40),
     "sheet": (20, 23, 28), "card": (26, 30, 36), "well": (11, 13, 16), "dark": (18, 21, 26),
-    "wavoff": (58, 63, 71), "clipbg": (42, 14, 16), "cliptext": (255, 107, 107),
+    "wavoff": (58, 63, 71), "meteroff": (150, 156, 162), "clipbg": (42, 14, 16), "cliptext": (255, 107, 107),
 }
 IFACE_COLORS = [(90, 169, 255), (255, 159, 67), (180, 140, 255), (63, 208, 201)]
 
@@ -855,7 +855,7 @@ class App:
         mx = x + (w - total) // 2
         for k, cid in enumerate(ids):
             r = pygame.Rect(mx + k * (mw + 6), my, mw, mh)
-            self.draw_meter(r, self.levels.get(cid, 0.0))
+            self.draw_meter(r, self.levels.get(cid, 0.0), self.armed(ids[0]))
             if now - self.peak_at.get(cid, -99) < CLIP_HOLD:
                 b = pygame.Rect(r.x + 1, r.y + 3, 22, 22)
                 pygame.draw.circle(self.surf, C["clipbg"], b.center, 11)
@@ -882,10 +882,10 @@ class App:
             col, lab = C["text"], "REC"
         elif armed:
             self.rrect(ar, C["recbg"], 8, C["recb"], 2)
-            col, lab = C["rectext"], "Armed"
+            col, lab = C["rectext"], "ON"
         else:
             self.rrect(ar, C["btn"], 8, C["btnb"], 2)
-            col, lab = C["soft"], "Arm"
+            col, lab = C["soft"], "OFF"
         lw = self.tw(lab, 13, True)
         pygame.draw.circle(self.surf, col, (ar.centerx - lw // 2 - 6, ar.centery), 5)
         self.text(lab, (ar.centerx + 5, ar.centery), 13, col, True, anchor="center")
@@ -893,8 +893,11 @@ class App:
             self.dim(ar)
         self.hit(ar, lambda i=list(ids), a=armed: self.toggle_arm(i, not a), enabled=not rec)
 
-    def draw_meter(self, r, lvl):
-        zones = ((0, GREEN_TOP, C["green"]), (GREEN_TOP, YELLOW_TOP, C["yellow"]), (YELLOW_TOP, 1.0, C["red"]))
+    def draw_meter(self, r, lvl, on=True):
+        if on:
+            zones = ((0, GREEN_TOP, C["green"]), (GREEN_TOP, YELLOW_TOP, C["yellow"]), (YELLOW_TOP, 1.0, C["red"]))
+        else:   # channel is OFF: still shows the signal, in light gray
+            zones = ((0, 1.0, C["meteroff"]),)
         pygame.draw.rect(self.surf, C["well"], r, border_radius=4)
         for a, b, col in zones:
             dimc = tuple(int(c * 0.16 + 11 * 0.84) for c in col)
@@ -996,6 +999,13 @@ class App:
                 if bps else "No channels armed")
         for i, ln in enumerate(self.wrap(line, 12, cw - 28)[:2]):
             self.text(ln, (card.x + 14, card.y + 76 + i * 16), 12, C["muted"])
+        self.draw_credits()
+
+    def draw_credits(self):
+        pygame.draw.line(self.surf, C["line"], (12, 428), (W - 12, 428))
+        self.text(f"Audio Capture Box v{__version__} · Created by Chris Fortunato, 2026", (12, 436), 12, C["soft"], True)
+        self.text("Open source: the code is free to see, use and build on at github.com/cfort6/Audio-Capture-Box",
+                  (12, 456), 12, C["muted"], maxw=W - 24)
 
     # ---------- takes
     def out_options(self):
@@ -1141,7 +1151,13 @@ class App:
         for i, ln in enumerate(lines):
             self.text(ln, (box.x + 12, box.y + 10 + i * 18), 13, C["text"], mono=True)
         y = box.bottom + 12
-        self.text("When asked, type the Pi's login password.", (x, y), 12, C["muted"])
+        if self.user == "user":
+            hint = "When asked for a password, type 1234 (unless it's been changed)."
+        else:
+            hint = "When asked, type the Pi's login password."
+        for ln in self.wrap(hint, 12, cw - 32):
+            self.text(ln, (x, y), 12, C["muted"])
+            y += 16
         self.text("Sharing stops when you leave this screen.", (12, 446), 12, C["muted"], anchor="midleft")
         self.button((W - 12 - 150, 424, 150, 44), "Stop sharing", lambda: self.go("takes"),
                     fill=C["recbg"], border=C["recb"], color=C["rectext"])

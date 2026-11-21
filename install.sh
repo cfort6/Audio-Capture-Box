@@ -58,7 +58,7 @@ echo "==> Installing the startup service"
 sudo tee /etc/systemd/system/$SERVICE.service >/dev/null <<EOF
 [Unit]
 Description=Audio Capture Box recorder
-After=systemd-user-sessions.service sound.target NetworkManager.service
+After=systemd-user-sessions.service sound.target NetworkManager.service plymouth-quit.service
 Conflicts=getty@tty1.service
 
 [Service]

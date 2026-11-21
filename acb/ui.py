@@ -498,6 +498,8 @@ class App:
             "name": f"Take {num}", "rate": self.S["rate"], "bits": self.S["bits"],
             "channels": self.armed_channels(), "tracks": len(tracks), "dest": self.dest_name(d),
             "interfaces": [f.name for f in self.ifaces], "clock": self.clock_master().name if self.ifaces else None,
+            "track_list": [{"file": t["file"], "interface": next(f.name for f in self.ifaces if f.short == t["short"]),
+                            "inputs": [c + 1 for c in t["chans"]]} for t in tracks],
         }
         try:
             self.engine.start_recording(take_dir, tracks, self.S["bits"], meta)
@@ -612,7 +614,7 @@ class App:
         elif screen == "wifi":
             self.scan_wifi()
         elif screen == "share" and self.wifi_ssid:
-            ok, msg = self.share.start(self.rec_dir())
+            ok, msg = self.share.start(self.rec_dir(), self.dest_name())
             if not ok:
                 self.toast(msg, 6)
 
@@ -1065,7 +1067,7 @@ class App:
                         fill=C["bluebg"], border=C["blue"])
             return
         if not self.share.running:
-            ok, msg = self.share.start(self.rec_dir())
+            ok, msg = self.share.start(self.rec_dir(), self.dest_name())
             if not ok:
                 self.toast(msg, 6)
         on = int(now * 2) % 2 == 0

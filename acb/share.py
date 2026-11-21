@@ -127,7 +127,14 @@ h1{font-size:28px;margin:0;line-height:1.2}
 .grow{flex:1 1 auto}
 code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0B0D10;border-radius:5px;padding:1px 6px;color:#E8EAED}
 .take{background:#171A1F;border-radius:12px;margin-bottom:18px;overflow:hidden}
-.take-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid #23272E}
+.take-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;padding:16px 18px}
+details.files summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid #23272E;font-weight:700;font-size:14px;color:#C9CDD2;user-select:none}
+details.files summary::-webkit-details-marker{display:none}
+details.files summary:hover{color:#E8EAED;background:#1B1F25}
+.chev{transition:transform .15s ease}
+details[open] .chev{transform:rotate(90deg)}
+details[open] .when-closed,details:not([open]) .when-open{display:none}
+details.files table{border-top:1px solid #23272E}
 .take-head h3{margin:0 0 4px;font-size:19px}
 .line{color:#C9CDD2;font-size:14px}
 .line.muted{color:#9AA0A6}
@@ -158,6 +165,8 @@ form{margin:0}
 
 ICON_DL = ('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" '
            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>')
+ICON_CHEV = ('<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" '
+             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>')
 ICON_TRASH = ('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
               'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>')
 
@@ -216,12 +225,13 @@ def render_index(root):
 <a class="btn btn-primary" href="/zip/{quote(folder)}" download>{ICON_DL}Download whole take</a>
 <button type="button" class="btn btn-danger" onclick="ask('/delete/{quote(folder)}', {js_str(f'{name} and its {len(files)} files will be moved to the Trash.')})">{ICON_TRASH}Delete take</button>
 </div></div>
+<details class="files"><summary>{ICON_CHEV}<span class="when-closed">Show files ({len(files)})</span><span class="when-open">Hide files</span></summary>
 <table>""")
         for fn, size in files:
             out.append(f"""<tr><td><div class="fname">{e(fn)}</div><div class="desc">{e(describe_file(fn, meta))}</div></td>
 <td class="size">{human_size(size)}</td>
 <td class="act"><a class="btn btn-secondary" href="/file/{quote(folder)}/{quote(fn)}" download>{ICON_DL}Download</a></td></tr>""")
-        out.append("</table></section>")
+        out.append("</table></details></section>")
     return page("Recordings", "".join(out))
 
 

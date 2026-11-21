@@ -119,3 +119,7 @@ python3 -m acb --simulate --windowed
   is saved and written to each take, and syncing is planned for the next version.
   A single interface is unaffected.
 - Playing a take through an interface needs the interface to support the take's sample rate.
+
+## License
+
+MIT License. Copyright (c) 2026 Chris Fortunato. See [LICENSE](LICENSE).

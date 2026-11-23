@@ -51,6 +51,12 @@ ResultActive=yes
 EOF
 fi
 
+echo "==> Trimming startup so the recorder is ready sooner"
+# Wi-Fi still connects as normal; startup just doesn't wait for it. cloud-init only
+# matters on the very first boot (it applies Raspberry Pi Imager's settings).
+sudo systemctl disable NetworkManager-wait-online.service e2scrub_reap.service >/dev/null 2>&1 || true
+if [ -d /etc/cloud ]; then sudo touch /etc/cloud/cloud-init.disabled; fi
+
 echo "==> Creating the recordings folder"
 mkdir -p "/home/$USER_NAME/recordings"
 

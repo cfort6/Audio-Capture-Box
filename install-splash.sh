@@ -85,6 +85,17 @@ if [ "${ACB_EARLY_DRIVERS:-0}" = "1" ]; then
   echo "    early drivers: $(echo $MODS | tr '\n' ' ')"
 fi
 
+echo "==> Loading the screen driver at the very start of startup"
+# Drivers listed in /etc/modules-load.d load before the general driver pass, so the
+# screen (and the splash) come on about a second sooner. Unlike the early-boot image,
+# this happens after the SD card is found, so it can't stop the Pi from starting.
+DISPLAY_MODS=$(lsmod | awk 'NR>1 {print $1}' | grep -E '^(vc4|panel_.*|rpi_panel_.*|.*attiny.*|.*backlight.*|pwm_bl)$' || true)
+if [ -n "$DISPLAY_MODS" ]; then
+  echo "$DISPLAY_MODS" | sudo tee /etc/modules-load.d/acb-display.conf >/dev/null
+  echo "    $(echo $DISPLAY_MODS | tr '\n' ' ')"
+fi
+grep -q '^initial_turbo=' "$CFG" || echo 'initial_turbo=30' | sudo tee -a "$CFG" >/dev/null   # full speed while starting
+
 echo "==> Setting the theme and rebuilding the early-boot image (takes a minute)"
 sudo plymouth-set-default-theme "$THEME_NAME"
 if ! sudo update-initramfs -u; then
@@ -105,5 +116,5 @@ grep -q '^auto_initramfs=1' "$CFG" || echo 'auto_initramfs=1' | sudo tee -a "$CF
 
 echo
 echo "Done. Reboot to see it:  sudo reboot"
-echo "To undo: sudo cp $CMD.before-splash $CMD && sudo reboot"
+echo "To undo: sudo cp $CMD.before-splash $CMD && sudo rm -f /etc/modules-load.d/acb-display.conf && sudo reboot"
 echo "         (or, from a computer, restore cmdline.txt and set auto_initramfs=0 in config.txt)"

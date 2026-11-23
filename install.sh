@@ -66,7 +66,7 @@ User=$USER_NAME
 SupplementaryGroups=audio video input render plugdev netdev
 WorkingDirectory=$APP_DIR
 Environment=ACB_DISPLAY=auto
-ExecStartPre=-+/bin/sh -c 'TERM=linux setterm --cursor off --blank 0 --powersave off > /dev/tty1 < /dev/tty1; printf "\\033[2J" > /dev/tty1'
+ExecStartPre=-+/bin/sh -c 'TERM=linux setterm --cursor off --blank 0 --powersave off > /dev/tty1 < /dev/tty1'
 ExecStopPost=-+/bin/sh -c 'TERM=linux setterm --cursor on > /dev/tty1 < /dev/tty1'
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 -m acb

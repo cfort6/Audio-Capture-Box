@@ -70,7 +70,9 @@ cd ~/Audio-Capture-Box
 sudo reboot
 ```
 
-The Pi then shows `extras/splash.png` while it starts. To use your own picture, replace
+The Pi then shows `extras/splash.png` while it starts, using Raspberry Pi's official
+splash tool (`rpi-splash-screen-support`). The script also loads the screen driver early
+in boot so the image appears sooner. To use your own picture, replace
 that file with an 800×480 PNG and run the script again.
 
 ## Making more units (cloning the SD card)

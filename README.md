@@ -70,14 +70,8 @@ cd ~/Audio-Capture-Box
 sudo reboot
 ```
 
-The Pi then shows `extras/splash.png` from the moment the screen turns on until the
-recorder starts. A tiny service draws it alongside normal startup, so if it ever fails
-the Pi still boots. (Boot-level splash tools, Plymouth and Raspberry Pi's
-`rpi-splash-screen-support`, hung this Pi with its DSI screen, and the script removes them.)
-To use your own picture, replace that file with an 800×480 PNG and run the script again.
-
-The screen's login prompt is turned off so it doesn't draw over the image; log in over
-SSH. To bring it back: `sudo systemctl enable getty@tty1`.
+The Pi then shows `extras/splash.png` while it starts. To use your own picture, replace
+that file with an 800×480 PNG and run the script again.
 
 ## Making more units (cloning the SD card)
 
